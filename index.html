@@ -10,7 +10,15 @@
 <body>
     <div id="synapEditor"></div>
     <script>
-        new SynapEditor('synapEditor');
+        // console.log($);
+        jQuery.ajax({
+            url: '/load'
+        }).done((data) => {
+            const serializedData = data.serializedData;
+            new SynapEditor('synapEditor', null, serializedData);
+            console.log(data);
+        });
+        
     </script>
 </body>
 </html>

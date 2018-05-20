@@ -3,7 +3,10 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const unzip = require('unzip');
+const zlib = require('zlib');
 const app = express();
+const childProcess = require('child_process');
+const port = 8686;
 
 const storage = multer.diskStorage({
     destination: function (req, file, callback) {
@@ -15,15 +18,15 @@ const storage = multer.diskStorage({
 });
 const imageUploader = multer({ storage: storage })
 
-app.use('/se', express.static(path.join(__dirname, 'lib', 'synapeditor')));
+app.use('/se', express.static(path.join(__dirname, 'lib')));
 app.use('/res', express.static(path.join(__dirname, 'res')));
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(8080, () => {
-    console.log('editor-server start at localhost:8080');
+app.listen(port, () => {
+    console.log(`editor-server start at localhost:${port}`);
 });
 
 app.post('/uploadImage', imageUploader.single('imageFile'), (req, res) => {
@@ -32,14 +35,45 @@ app.post('/uploadImage', imageUploader.single('imageFile'), (req, res) => {
     });
 });
 
-var ws = fs.createWriteStream('test2.ndoc');
-fs.createReadStream(path.join(__dirname, 'res', 'test1.ndoc'), {start:0, end: 4}).on('data', (buffer) => {
-    console.log(buffer);
-    ws.write(buffer);
-}).on('end', () => {
-    ws.end();
+app.get('/import', (req, res) => {
+    childProcess.exec('');
 });
 
-// fs.createReadStream(path.join(__dirname, 'res', 'test1.ndoc')).on('data', () => {
-//     console.log('aa');
-// });
+app.get('/load', (req, res) => {
+    let serializedData = [];
+    let rs = fs.createReadStream(path.join(__dirname, 'res', 'test1.ndoc'));
+    let ws = fs.createWriteStream(path.join(__dirname, 'tmp', 'test1.zip'));
+
+    rs.on('data', (data) => {
+        const magicPos = data[2];
+        const magicNum = data[magicPos];
+        data[0] = 'P'.charCodeAt();
+        data[1] = 'K'.charCodeAt();
+        data[2] = 0x03;
+        data[3] = 0x04;
+
+        for(let i = 0; i < 60; i++) {
+            const index = i + 4;
+            data[index] = data[index] ^ magicNum;
+        }
+
+        ws.write(data);
+        ws.end();
+    });
+
+    ws.on('close', () => {
+        fs.createReadStream(path.join(__dirname, 'tmp', 'test1.zip'))
+          .pipe(unzip.Extract({path: path.join(__dirname, 'tmp')})).on('close', () => {
+            fs.createReadStream(path.join(__dirname, 'tmp', 'document.word.pb'), {start: 16})
+              .pipe(zlib.createUnzip())
+              .on('data', (data) => {
+                for (let i = 0, len = data.length; i < len; i++) {
+                    serializedData.push(data[i] & 0xFF);
+                }
+            }).on('close', () => {
+                res.json({serializedData: serializedData});
+                res.end();
+            });
+        });
+    });
+});
