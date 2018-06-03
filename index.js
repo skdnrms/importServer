@@ -29,8 +29,8 @@ app.listen(port, () => {
 app.get('/test', () => {
     console.log('inTest!!!');
 
-    const fullFileName = 'simple word.docx';
-    const fileName = 'simple word';
+    const fullFileName = 'simpleWord.docx';
+    const fileName = 'simpleWord';
     const convFilePath = path.join(convertPath, fileName);
     const convert = exec(`../../documentConverter_exe ${path.join(resourcePath, fullFileName)} ${convFilePath} ${convertPath} ndoc`, (error, stdout, stderr) => {
         if (error) {
