@@ -5,12 +5,16 @@ const fs = require('fs');
 const unzip = require('unzip');
 const zlib = require('zlib');
 const app = express();
-const childProcess = require('child_process');
+const { exec } = require('child_process');
 const port = 8080;
+
+const resourcePath = path.join(__dirname, 'res');
+const tempPath = path.join(__dirname, 'tmp');
+const convertPath = path.join(__dirname, 'conv');
 
 const storage = multer.diskStorage({
     destination: function (req, file, callback) {
-        callback(null, path.join(__dirname, 'res')) // 콜백함수를 통해 전송된 파일 저장 디렉토리 설정
+        callback(null, resourcePath) // 콜백함수를 통해 전송된 파일 저장 디렉토리 설정
     },
     filename: function (req, file, callback) {
         callback(null, file.originalname) // 콜백함수를 통해 전송된 파일 이름 설정
@@ -24,28 +28,41 @@ app.listen(port, () => {
 
 app.post('/import', uploader.single('file'), (req, res) => {
     console.log('import!!', req.file.filename);
-    let rs = fs.createReadStream(path.join(__dirname, 'res', 'test1.ndoc'));
-    let ws = fs.createWriteStream(path.join(__dirname, 'tmp', 'test1.zip'));
 
-    rs.on('data', (data) => {
-        const magicPos = data[2];
-        const magicNum = data[magicPos];
-        data[0] = 'P'.charCodeAt();
-        data[1] = 'K'.charCodeAt();
-        data[2] = 0x03;
-        data[3] = 0x04;
-
-        for(let i = 0; i < 60; i++) {
-            const index = i + 4;
-            data[index] = data[index] ^ magicNum;
+    const convert = exec(`../../documentConverter_exe ${path.join(resourcePath, req.file.filename)} ${path.join(convertPath, req.file.filename)}, ${convertPath} sedoc`, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`convert error: ${error}`);
+            return;
         }
-
-        ws.write(data);
-        ws.end();
+        console.log(`stdout: ${stdout}`);
+        console.log(`stderr: ${stderr}`);
     });
 
-    ws.on('close', () => {
-        console.log('on close!!!');
-        res.sendFile(path.join(__dirname, 'tmp', 'test1.zip'));
+    convert.on('close', () => {
+        console.log('convert close');
+        const resultFilePath = path.join(tempPath, req.file.filename);
+        const rs = fs.createReadStream(path.join(convertPath, req.file.filename));
+        const ws = fs.createWriteStream(resultFilePath);
+    
+        rs.on('data', (data) => {
+            const magicPos = data[2];
+            const magicNum = data[magicPos];
+            data[0] = 'P'.charCodeAt();
+            data[1] = 'K'.charCodeAt();
+            data[2] = 0x03;
+            data[3] = 0x04;
+    
+            for(let i = 0; i < 60; i++) {
+                const index = i + 4;
+                data[index] = data[index] ^ magicNum;
+            }
+    
+            ws.write(data);
+            ws.end();
+        });
+    
+        ws.on('close', () => {
+            res.sendFile(resultFilePath);
+        });
     });
 });
