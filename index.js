@@ -6,7 +6,7 @@ const unzip = require('unzip');
 const zlib = require('zlib');
 const app = express();
 const { exec } = require('child_process');
-const port = 8080;
+const port = 8086;
 
 const resourcePath = path.join(__dirname, 'res');
 const tempPath = path.join(__dirname, 'tmp');
@@ -25,6 +25,48 @@ const uploader = multer({ storage: storage })
 app.listen(port, () => {
     console.log(`import-server start at localhost:${port}`);
 });
+
+app.get('/test', () => {
+    console.log('inTest!!!');
+
+    const fileName = 'imageTest_1.docx';
+    const convert = exec(`../../documentConverter_exe ${path.join(resourcePath, fileName)} ${path.join(convertPath, fileName)}, ${convertPath} sedoc`, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`convert error: ${error}`);
+            return;
+        }
+        console.log(`stdout: ${stdout}`);
+        console.log(`stderr: ${stderr}`);
+    });
+
+    convert.on('close', () => {
+        console.log('convert close');
+        const resultFilePath = path.join(tempPath, fileName);
+        const rs = fs.createReadStream(path.join(convertPath, fileName));
+        const ws = fs.createWriteStream(resultFilePath);
+    
+        rs.on('data', (data) => {
+            const magicPos = data[2];
+            const magicNum = data[magicPos];
+            data[0] = 'P'.charCodeAt();
+            data[1] = 'K'.charCodeAt();
+            data[2] = 0x03;
+            data[3] = 0x04;
+    
+            for(let i = 0; i < 60; i++) {
+                const index = i + 4;
+                data[index] = data[index] ^ magicNum;
+            }
+    
+            ws.write(data);
+            ws.end();
+        });
+    
+        ws.on('close', () => {
+            res.sendFile(resultFilePath);
+        });
+    });
+})
 
 app.post('/import', uploader.single('file'), (req, res) => {
     console.log('import!!', req.file.filename);
