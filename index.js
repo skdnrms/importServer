@@ -26,13 +26,13 @@ app.listen(port, () => {
     console.log(`import-server start at localhost:${port}`);
 });
 
-app.get('/test', () => {
+app.get('/test', (req, res) => {
     console.log('inTest!!!');
 
     const fullFileName = 'simpleWord.docx';
     const fileName = 'simpleWord';
     const convFilePath = path.join(convertPath, fileName);
-    const convert = exec(`../../documentConverter_exe ${path.join(resourcePath, fullFileName)} ${convFilePath} ${convertPath} ndoc`, (error, stdout, stderr) => {
+    const convert = exec(`../../documentConverter_exe ${path.join(resourcePath, fullFileName)} ${convFilePath} ${convertPath} sedoc`, (error, stdout, stderr) => {
         if (error) {
             console.error(`convert error: ${error}`);
             return;
