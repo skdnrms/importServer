@@ -29,8 +29,10 @@ app.listen(port, () => {
 app.get('/test', () => {
     console.log('inTest!!!');
 
-    const fileName = 'imageTest_1.docx';
-    const convert = exec(`../../documentConverter_exe ${path.join(resourcePath, fileName)} ${path.join(convertPath, fileName)} ${convertPath} sedoc`, (error, stdout, stderr) => {
+    const fullFileName = 'simple word.docx';
+    const fileName = 'simple word';
+    const convFilePath = path.join(convertPath, fileName);
+    const convert = exec(`../../documentConverter_exe ${path.join(resourcePath, fullFileName)} ${convFilePath} ${convertPath} ndoc`, (error, stdout, stderr) => {
         if (error) {
             console.error(`convert error: ${error}`);
             return;
@@ -42,7 +44,7 @@ app.get('/test', () => {
     convert.on('close', () => {
         console.log('convert close');
         const resultFilePath = path.join(tempPath, fileName);
-        const rs = fs.createReadStream(path.join(convertPath, fileName));
+        const rs = fs.createReadStream(convFilePath);
         const ws = fs.createWriteStream(resultFilePath);
     
         rs.on('data', (data) => {
@@ -71,7 +73,7 @@ app.get('/test', () => {
 app.post('/import', uploader.single('file'), (req, res) => {
     console.log('import!!', req.file.filename);
 
-    const convert = exec(`../../documentConverter_exe ${path.join(resourcePath, req.file.filename)} ${path.join(convertPath, req.file.filename)} ${convertPath} sedoc`, (error, stdout, stderr) => {
+    const convert = exec(`../../documentConverter_exe ${path.join(resourcePath, req.file.filename)} ${path.join(convertPath, req.file.filename)} ${convertPath} ndoc`, (error, stdout, stderr) => {
         if (error) {
             console.error(`convert error: ${error}`);
             return;
@@ -102,8 +104,13 @@ app.post('/import', uploader.single('file'), (req, res) => {
             ws.write(data);
             ws.end();
         });
+
+        rs.on('close', () => {
+            console.log('rs close');
+        });
     
         ws.on('close', () => {
+            console.log('ws close');
             res.sendFile(resultFilePath);
         });
     });
