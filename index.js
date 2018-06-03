@@ -30,7 +30,7 @@ app.get('/test', () => {
     console.log('inTest!!!');
 
     const fileName = 'imageTest_1.docx';
-    const convert = exec(`../../documentConverter_exe ${path.join(resourcePath, fileName)} ${path.join(convertPath, fileName)}, ${convertPath} sedoc`, (error, stdout, stderr) => {
+    const convert = exec(`../../documentConverter_exe ${path.join(resourcePath, fileName)} ${path.join(convertPath, fileName)} ${convertPath} sedoc`, (error, stdout, stderr) => {
         if (error) {
             console.error(`convert error: ${error}`);
             return;
@@ -71,7 +71,7 @@ app.get('/test', () => {
 app.post('/import', uploader.single('file'), (req, res) => {
     console.log('import!!', req.file.filename);
 
-    const convert = exec(`../../documentConverter_exe ${path.join(resourcePath, req.file.filename)} ${path.join(convertPath, req.file.filename)}, ${convertPath} sedoc`, (error, stdout, stderr) => {
+    const convert = exec(`../../documentConverter_exe ${path.join(resourcePath, req.file.filename)} ${path.join(convertPath, req.file.filename)} ${convertPath} sedoc`, (error, stdout, stderr) => {
         if (error) {
             console.error(`convert error: ${error}`);
             return;
