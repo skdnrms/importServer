@@ -73,7 +73,10 @@ app.get('/test', (req, res) => {
 app.post('/import', uploader.single('file'), (req, res) => {
     console.log('import!!', req.file.filename);
 
-    const convert = exec(`../../documentConverter_exe ${path.join(resourcePath, req.file.filename)} ${path.join(convertPath, req.file.filename)} ${convertPath} ndoc`, (error, stdout, stderr) => {
+    const fullFileName = req.file.filename;
+    const fileName = fullFileName.split('.')[0];
+    const convFilePath = path.join(convertPath, fileName);
+    const convert = exec(`../../documentConverter_exe ${path.join(resourcePath, fullFileName)} ${convFilePath} ${convertPath} sedoc`, (error, stdout, stderr) => {
         if (error) {
             console.error(`convert error: ${error}`);
             return;
@@ -85,9 +88,9 @@ app.post('/import', uploader.single('file'), (req, res) => {
     convert.on('close', () => {
         console.log('convert close');
         const resultFilePath = path.join(tempPath, req.file.filename);
-        const rs = fs.createReadStream(path.join(convertPath, req.file.filename));
+        const rs = fs.createReadStream(convFilePath);
         const ws = fs.createWriteStream(resultFilePath);
-    
+
         rs.on('data', (data) => {
             const magicPos = data[2];
             const magicNum = data[magicPos];
@@ -95,20 +98,16 @@ app.post('/import', uploader.single('file'), (req, res) => {
             data[1] = 'K'.charCodeAt();
             data[2] = 0x03;
             data[3] = 0x04;
-    
+
             for(let i = 0; i < 60; i++) {
                 const index = i + 4;
                 data[index] = data[index] ^ magicNum;
             }
-    
+
             ws.write(data);
             ws.end();
         });
 
-        rs.on('close', () => {
-            console.log('rs close');
-        });
-    
         ws.on('close', () => {
             console.log('ws close');
             res.sendFile(resultFilePath);
