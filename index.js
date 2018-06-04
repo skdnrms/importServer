@@ -97,7 +97,7 @@ app.get('/import2', (req, res) => {
 
         convert.on('close', () => {
             console.log('convert close');
-            const resultFilePath = path.join(tempPath, filename);
+            const resultFilePath = path.join(tempPath, fileName);
             const rs = fs.createReadStream(convFilePath);
             const ws = fs.createWriteStream(resultFilePath);
 
