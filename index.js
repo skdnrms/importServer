@@ -1,6 +1,8 @@
+const request = require('request');
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
+const url = require('url')
 const fs = require('fs');
 const unzip = require('unzip');
 const zlib = require('zlib');
@@ -72,7 +74,54 @@ app.post('/import', uploader.single('file'), (req, res) => {
 });
 
 app.get('/import2', (req, res) => {
-    console.log('import2!!!');
-    console.log(req);
-    console.log(res);
+    const urlStr = req.query.url;
+    const fullFileName = path.basename(url.parse(urlStr).path);
+    const fileName = fullFileName.split('.')[0];
+    console.log(fullFileName, fileName);
+    const downloadFilePath = path.join(__dirname, 'download', fullFileName);
+    const downloadWS = fs.createWriteStream(downloadFilePath);
+    request.get(urlStr).pipe(downloadWS);
+    
+    downloadWS.on('close', () => {
+        console.log('downloadWS close!!');
+
+        const convFilePath = path.join(convertPath, fileName);
+        const convert = exec(`../../documentConverter_exe ${path.join(resourcePath, fullFileName)} ${convFilePath} ${convertPath} sedoc`, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`convert error: ${error}`);
+                return;
+            }
+            console.log(`stdout: ${stdout}`);
+            console.log(`stderr: ${stderr}`);
+        });
+
+        convert.on('close', () => {
+            console.log('convert close');
+            const resultFilePath = path.join(tempPath, filename);
+            const rs = fs.createReadStream(convFilePath);
+            const ws = fs.createWriteStream(resultFilePath);
+
+            rs.on('data', (data) => {
+                const magicPos = data[2];
+                const magicNum = data[magicPos];
+                data[0] = 'P'.charCodeAt();
+                data[1] = 'K'.charCodeAt();
+                data[2] = 0x03;
+                data[3] = 0x04;
+
+                for(let i = 0; i < 60; i++) {
+                    const index = i + 4;
+                    data[index] = data[index] ^ magicNum;
+                }
+
+                ws.write(data);
+                ws.end();
+            });
+
+            ws.on('close', () => {
+                console.log('ws close');
+                res.sendFile(resultFilePath);
+            });
+        });
+    });
 });
