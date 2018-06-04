@@ -86,7 +86,7 @@ app.get('/import2', (req, res) => {
         console.log('downloadWS close!!');
 
         const convFilePath = path.join(convertPath, fileName);
-        const convert = exec(`../../documentConverter_exe ${path.join(downloadFilePath, fullFileName)} ${convFilePath} ${convertPath} sedoc`, (error, stdout, stderr) => {
+        const convert = exec(`../../documentConverter_exe ${path.join(downloadFilePath)} ${convFilePath} ${convertPath} sedoc`, (error, stdout, stderr) => {
             if (error) {
                 console.error(`convert error: ${error}`);
                 return;
